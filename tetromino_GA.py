@@ -175,29 +175,12 @@ def main():
 def runGame():
     # setup variables for the start of the game
     board = getBlankBoard()
-    lastMoveDownTime = time.time()
-    lastMoveSidewaysTime = time.time()
-    lastFallTime = time.time()
-    movingDown = False # note: there is no movingUp variable
-    movingLeft = False
-    movingRight = False
     score = 0;
-    realScore = 0;
     level, fallFreq = calculateLevelAndFallFreq(score)
     count = 0;
     frames = 0;
     fallingPiece = None
     nextPiece = getNewPiece()
-    oldHeight = 0;
-    notDown = 0;
-    oldWidth = 0;
-    fit2 = 0;
-    oldShape = '';
-    t = 0;
-    t2= 0;
-    oldKey = 9;
-    keyCount = 0;
-    lastPiece = None;
     moves = []
     extra = 0;
     while True: # game loop
