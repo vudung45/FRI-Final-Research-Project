@@ -9,7 +9,7 @@ import GA_BRAIN
 import numpy as np
 import copy
 
-FPS = 10
+FPS = 25
 WINDOWWIDTH = 640
 WINDOWHEIGHT = 480
 BOXSIZE = 20
@@ -168,79 +168,80 @@ def main():
     BASICFONT = pygame.font.Font('freesansbold.ttf', 18)
     BIGFONT = pygame.font.Font('freesansbold.ttf', 100)
     pygame.display.set_caption('Tetromino')
-    fits = runGame();
-    return fits;
+    showTextScreen('Tetromino')
+    while True: # game loop
+        runGame()
 
 
 def runGame():
     # setup variables for the start of the game
     board = getBlankBoard()
+    lastMoveDownTime = time.time()
+    lastMoveSidewaysTime = time.time()
+    lastFallTime = time.time()
+    movingDown = False # note: there is no movingUp variable
+    movingLeft = False
+    movingRight = False
     score = 0;
     level, fallFreq = calculateLevelAndFallFreq(score)
-    count = 0;
-    frames = 0;
     fallingPiece = None
     nextPiece = getNewPiece()
+    index = 0;
     moves = []
-    extra = 0;
     while True: # game loop
         if(fallingPiece == None):
             fallingPiece = nextPiece
             nextPiece = getNewPiece()
-        if not isValidPosition(board, fallingPiece):
-            return score
-        moves = GA_BRAIN.trainSolver(board,fallingPiece)
-        moves.append(3)
-        index = 0;
-        while fallingPiece != None:
-            frames+=1
-            keyPress = 5 #do nothing
-            if(index < len(moves)):
-                keyPress = moves[index]
-                index += 1
-            if(keyPress == 0): #move up
-                keyPress = 4
-                fallingPiece['rotation'] = (fallingPiece['rotation'] + 1) % len(PIECES[fallingPiece['shape']])
-                if not isValidPosition(board, fallingPiece):
-                    fallingPiece['rotation'] = (fallingPiece['rotation'] - 1) % len(PIECES[fallingPiece['shape']]);
+            ga_moves = GA_BRAIN.trainSolver(board,fallingPiece)
+            moves = translateMoves(ga_moves);
+            index = 0;
+            if not isValidPosition(board, fallingPiece):
+                return score
 
-            elif (keyPress == 1 and isValidPosition(board, fallingPiece, adjX=1)): # move right
-                    fallingPiece['x'] += 1
-                    lastMoveSidewaysTime = time.time()
-            elif isValidPosition(board, fallingPiece, adjX=-1) and keyPress == 2 : #move left
-                      fallingPiece['x'] -= 1
-                      lastMoveSidewaysTime = time.time();
-            elif keyPress == 3:
-                while isValidPosition(board, fallingPiece, adjY=1):
-                    fallingPiece['y'] += 1
-               
+        checkForQuit()
+        keyPress = 5 #do nothing
+        if(index < len(moves)):
+            keyPress = moves[index]
+            index += 1
+        if(keyPress == 0): #move up
+            keyPress = 4
+            fallingPiece['rotation'] = (fallingPiece['rotation'] + 1) % len(PIECES[fallingPiece['shape']])
+            if not isValidPosition(board, fallingPiece):
+                fallingPiece['rotation'] = (fallingPiece['rotation'] - 1) % len(PIECES[fallingPiece['shape']]);
 
-            if not isValidPosition(board, fallingPiece, adjY = 1):
-                # falling piece has landed, set it on the board
-                addToBoard(board, fallingPiece)
-                score += removeCompleteLines(board)
-                level, fallFreq = calculateLevelAndFallFreq(score)
-                fallingPiece = None
-        
-
-            DISPLAYSURF.fill(BGCOLOR)
-            drawBoard(board)
-            drawStatus(score, level)
-            drawNextPiece(nextPiece)
-            if fallingPiece != None:
-              drawPiece(fallingPiece)
-            pygame.display.update()
-            FPSCLOCK.tick(FPS)
+        elif (keyPress == 1 and isValidPosition(board, fallingPiece, adjX=1)): # move right
+                fallingPiece['x'] += 1
+                lastMoveSidewaysTime = time.time()
+        elif isValidPosition(board, fallingPiece, adjX=-1) and keyPress == 2 : #move left
+                  fallingPiece['x'] -= 1
+                  lastMoveSidewaysTime = time.time();
+        elif keyPress == 3:
+            while isValidPosition(board, fallingPiece, adjY=1):
+                fallingPiece['y'] += 1
+        if not isValidPosition(board, fallingPiece, adjY = 1):
+            # falling piece has landed, set it on the board
+            addToBoard(board, fallingPiece)
+            score += removeCompleteLines(board)
+            level, fallFreq = calculateLevelAndFallFreq(score)
+            fallingPiece = None
+        DISPLAYSURF.fill(BGCOLOR)
+        drawBoard(board)
+        drawStatus(score, level)
+        #drawNextPiece(nextPiece)
+        if fallingPiece != None:
+          drawPiece(fallingPiece)
+        pygame.display.update()
+        FPSCLOCK.tick(FPS)
 
     return score;
 
 
 def processBoard(moves1, board, fallingPiece1):
+    score = 0;
     index = 0;
     notDown = 0;
     fallingPiece = copy.deepcopy(fallingPiece1);
-    moves = copy.deepcopy(moves1)
-    moves.append(3)
+    moves = translateMoves(moves1)
     while fallingPiece != None and index < len(moves):
         keyPress = moves[index]
         index+=1
@@ -261,12 +262,23 @@ def processBoard(moves1, board, fallingPiece1):
         if not isValidPosition(board, fallingPiece, adjY = 1):
             # falling piece has landed, set it on the board
             addToBoard(board, fallingPiece)
+            score += removeCompleteLines(board)
             fallingPiece = None
 
     newHeight = getHeight(board);
     newWidth = getWidth(board);
     numGap = countGap(board)
-    return numGap,newHeight,newWidth;
+    sumHeights = sum(getInputs(board));
+    return numGap,newHeight,sumHeights,newWidth;
+
+def translateMoves(moves):
+    res = []
+    for i in range(moves[2]):
+        res.append(0); #change rotation
+    for i in range(moves[1]):
+        res.append((moves[0]+1)); #num moves
+    res.append(3)
+    return res;
 
 def countGap(board):
     count = 0
@@ -316,11 +328,11 @@ def getWidth(board): # return the current height of the pieces
 def getInputs(board):
     inputs = [];
     for w in range(len(board)):
-        output = 0;
+        top = 0;
         for i in reversed(range(len(board[w]))):
             if board[w][i] != '.':
-                output += 1
-        inputs.append(output);
+                top = i;
+        inputs.append(len(board) - top);
     return inputs
          
 
