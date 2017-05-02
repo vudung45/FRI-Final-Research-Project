@@ -348,11 +348,11 @@ def getWidth(board): # return the current height of the pieces
 def getInputs(board):
     inputs = [];
     for w in range(len(board)):
-        output = 0;
+        top = len(board);
         for i in reversed(range(len(board[w]))):
             if board[w][i] != '.':
-                output += 1
-        inputs.append(output);
+                top = i
+        inputs.append(len(board) - top);
     return inputs
          
 

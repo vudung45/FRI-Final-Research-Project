@@ -55,7 +55,7 @@ def mutate(individual):
 	if(np.random.rand() < 0.8):
 		individual[1] = (individual[1]+1) % 6;
 
-	if(np.random.rand() < 0.5):
+	if(np.random.rand() < 0.4):
 		individual[2] = (individual[2]+1) % 4;
 
 	return individual,
