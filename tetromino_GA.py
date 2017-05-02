@@ -9,7 +9,7 @@ import GA_BRAIN
 import numpy as np
 import copy
 
-FPS = 25
+FPS = 60
 WINDOWWIDTH = 640
 WINDOWHEIGHT = 480
 BOXSIZE = 20
@@ -218,6 +218,7 @@ def runGame():
         elif keyPress == 3:
             while isValidPosition(board, fallingPiece, adjY=1):
                 fallingPiece['y'] += 1
+
         if not isValidPosition(board, fallingPiece, adjY = 1):
             # falling piece has landed, set it on the board
             addToBoard(board, fallingPiece)
@@ -227,7 +228,7 @@ def runGame():
         DISPLAYSURF.fill(BGCOLOR)
         drawBoard(board)
         drawStatus(score, level)
-        #drawNextPiece(nextPiece)
+        drawNextPiece(nextPiece)
         if fallingPiece != None:
           drawPiece(fallingPiece)
         pygame.display.update()
@@ -236,13 +237,14 @@ def runGame():
     return score;
 
 
-def processBoard(moves1, board, fallingPiece1):
+def processBoard(moves1, board, fallingPiece):
     score = 0;
     index = 0;
     notDown = 0;
-    fallingPiece = copy.deepcopy(fallingPiece1);
     moves = translateMoves(moves1)
-    while fallingPiece != None and index < len(moves):
+    oldRotation = fallingPiece['rotation'];
+    done = False
+    while not done and index < len(moves):
         keyPress = moves[index]
         index+=1
         if(keyPress == 0): #move up
@@ -262,14 +264,24 @@ def processBoard(moves1, board, fallingPiece1):
         if not isValidPosition(board, fallingPiece, adjY = 1):
             # falling piece has landed, set it on the board
             addToBoard(board, fallingPiece)
-            score += removeCompleteLines(board)
-            fallingPiece = None
+            score += removeCompleteLines2(board)
+            done = True
 
     newHeight = getHeight(board);
     newWidth = getWidth(board);
     numGap = countGap(board)
-    sumHeights = sum(getInputs(board));
-    return numGap,newHeight,sumHeights,newWidth;
+    getOriginal(fallingPiece, board);
+    fallingPiece['rotation'] = oldRotation;
+    fallingPiece['x'] =  int(BOARDWIDTH / 2) - int(TEMPLATEWIDTH / 2)
+    fallingPiece['y'] = -2
+    return numGap,newHeight,newWidth,score;
+
+def getOriginal(piece,board):
+    for x in range(TEMPLATEWIDTH):
+       for y in range(TEMPLATEHEIGHT):
+           if PIECES[piece['shape']][piece['rotation']][y][x] != BLANK:
+                    board[min(len(board) - 1,x + piece['x'])][min(len(board[0]) - 1, y + piece['y'])] = '.'
+
 
 def translateMoves(moves):
     res = []
@@ -328,11 +340,11 @@ def getWidth(board): # return the current height of the pieces
 def getInputs(board):
     inputs = [];
     for w in range(len(board)):
-        top = 0;
+        output = 0;
         for i in reversed(range(len(board[w]))):
             if board[w][i] != '.':
-                top = i;
-        inputs.append(len(board) - top);
+                output += 1
+        inputs.append(output);
     return inputs
          
 
@@ -428,11 +440,10 @@ def getNewPiece():
 
 def addToBoard(board, piece):
     # fill in the board based on piece's location, shape, and rotation
-    check = True
     for x in range(TEMPLATEWIDTH):
-	for y in range(TEMPLATEHEIGHT):
-	    if PIECES[piece['shape']][piece['rotation']][y][x] != BLANK:
-	                board[min(len(board) - 1,x + piece['x'])][min(len(board[0]) - 1, y + piece['y'])] = piece['color']
+	   for y in range(TEMPLATEHEIGHT):
+	       if PIECES[piece['shape']][piece['rotation']][y][x] != BLANK:
+	                board[max(0,min(len(board) - 1,x + piece['x']))][max(0,min(len(board[0]) - 1, y + piece['y']))] = piece['color']
 
 
 def getBlankBoard():
@@ -477,7 +488,7 @@ def removeCompleteLines(board):
             # Remove the line and pull boxes down by one line.
             for pullDownY in range(y, 0, -1):
                 for x in range(BOARDWIDTH):
-                    board[x][pullDownY] = board[x][pullDownY-1]
+                    board[x][max(0,pullDownY)] = board[x][max(0,pullDownY-1)]
             # Set very top line to blank.
             for x in range(BOARDWIDTH):
                 board[x][0] = BLANK
@@ -485,8 +496,19 @@ def removeCompleteLines(board):
             # Note on the next iteration of the loop, y is the same.
             # This is so that if the line that was pulled down is also
             # complete, it will be removed.
-        else:
-            y -= 1 # move on to check next row up
+        y -= 1 # move on to check next row up
+    return numLinesRemoved
+
+def removeCompleteLines2(board):
+    # Remove any completed lines on the board, move everything above them down, and return the number of complete lines.
+    numLinesRemoved = 0
+    y = BOARDHEIGHT - 1 # start y at the bottom of the board
+    while y >= 0:
+        if isCompleteLine(board, y):
+            # Remove the line and pull boxes down by one line.
+            numLinesRemoved += 1
+        y-=1;
+     
     return numLinesRemoved
 
 
