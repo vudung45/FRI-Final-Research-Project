@@ -243,6 +243,8 @@ def processBoard(moves1, board, fallingPiece):
     notDown = 0;
     moves = translateMoves(moves1)
     oldRotation = fallingPiece['rotation'];
+    heights = getInputs(board);
+    list.sort(heights);
     done = False
     while not done and index < len(moves):
         keyPress = moves[index]
@@ -269,12 +271,18 @@ def processBoard(moves1, board, fallingPiece):
 
     newHeight = getHeight(board);
     newWidth = getWidth(board);
-    numGap = countGap(board)
+    numGap = countGap(board);
+    newHeights = getInputs(board);
+    list.sort(newHeights);
+    sumChanges = 0;
+    for i in range(len(newHeights)):
+        if newHeights[i] >  heights[i]:
+            sumChanges+= i;
     getOriginal(fallingPiece, board);
     fallingPiece['rotation'] = oldRotation;
     fallingPiece['x'] =  int(BOARDWIDTH / 2) - int(TEMPLATEWIDTH / 2)
     fallingPiece['y'] = -2
-    return numGap,newHeight,newWidth,score;
+    return numGap,newHeight,newWidth,score,sumChanges;
 
 def getOriginal(piece,board):
     for x in range(TEMPLATEWIDTH):
@@ -477,6 +485,7 @@ def isCompleteLine(board, y):
         if board[x][y] == BLANK:
             return False
     return True
+
 
 
 def removeCompleteLines(board):
